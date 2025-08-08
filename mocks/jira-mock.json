@@ -1,0 +1,41 @@
+{
+  "source": "mockoon:1.24.0",
+  "data": {
+    "id": "jira-mock",
+    "name": "jira-mock",
+    "endpointPrefix": "",
+    "port": 3000,
+    "routes": [
+      {
+        "uuid": "get-issues",
+        "documentation": "List issues",
+        "method": "get",
+        "endpoint": "api/issues",
+        "responses": [
+          {
+            "uuid": "get-issues-200",
+            "statusCode": 200,
+            "label": "OK",
+            "headers": [{"key":"Content-Type","value":"application/json"}],
+            "body": "[\n  {\"id\": 1, \"summary\": \"Demo issue\", \"description\": \"Seed data from mock\"}\n]"
+          }
+        ]
+      },
+      {
+        "uuid": "post-issues",
+        "documentation": "Create issue",
+        "method": "post",
+        "endpoint": "api/issues",
+        "responses": [
+          {
+            "uuid": "post-issues-201",
+            "statusCode": 201,
+            "label": "Created",
+            "headers": [{"key":"Content-Type","value":"application/json"}],
+            "body": "{{body}}"
+          }
+        ]
+      }
+    ]
+  }
+}
