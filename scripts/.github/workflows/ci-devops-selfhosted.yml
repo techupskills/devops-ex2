@@ -1,0 +1,28 @@
+# Requires a self-hosted runner inside the Codespace to reach localhost.
+name: Jenkins CI with JIRA Reporting (Self-Hosted)
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  build:
+    runs-on: self-hosted
+    env:
+      JENKINS_URL: http://localhost:8080
+      JENKINS_USER: admin
+      JENKINS_TOKEN: ${{ secrets.JENKINS_API_TOKEN }}
+      JOB_NAME: copilot-demo-job
+      FJIRA_URL: http://localhost:3000/api/issues
+    steps:
+      - name: Trigger Jenkins job
+        run: |
+          set -e
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" -X POST -u "$JENKINS_USER:$JENKINS_TOKEN" "$JENKINS_URL/job/$JOB_NAME/build")
+          if [ "$STATUS" != "201" ] && [ "$STATUS" != "302" ]; then
+            echo "Jenkins trigger failed (HTTP $STATUS). Creating Jira ticket..."
+            curl -s -X POST "$FJIRA_URL" \
+              -H "Content-Type: application/json" \
+              -d '{"summary":"Jenkins build trigger failed","description":"GitHub Action could not start job '"$JOB_NAME"'"}'
+            exit 1
+          fi
+          echo "Triggered Jenkins."

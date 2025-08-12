@@ -1,0 +1,9 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    { "label": "Create Jenkins Job", "type": "shell", "command": "python3 scripts/create-jenkins-job.py", "problemMatcher": [] },
+    { "label": "Create Jira Ticket", "type": "shell", "command": "python3 scripts/create-fjira-ticket.py", "problemMatcher": [] },
+    { "label": "Start Dashboard", "type": "shell", "command": "cd dashboard && python3 app.py", "problemMatcher": [] },
+    { "label": "Start Jira Mock (Python)", "type": "shell", "command": "python3 scripts/jira_mock.py", "problemMatcher": [] }
+  ]
+}

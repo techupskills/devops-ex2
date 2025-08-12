@@ -1,21 +1,15 @@
 {
   "name": "DevOps AI Lab",
-  "image": "mcr.microsoft.com/devcontainers/base:ubuntu", 
-  "hostRequirements": {
-    "cpus": 4,
-    "memory": "8gb",
-    "storage": "32gb"
-  },
+  "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
+  "hostRequirements": { "cpus": 4, "memory": "8gb", "storage": "32gb" },
   "features": {
     "ghcr.io/devcontainers/features/docker-from-docker:1": {},
     "ghcr.io/devcontainers/features/github-cli:1": {},
     "ghcr.io/devcontainers/features/python:1": {},
-    "ghcr.io/devcontainers/features/node:1": {
-      "version": "lts"
-    }
+    "ghcr.io/devcontainers/features/node:1": { "version": "lts" }
   },
   "postCreateCommand": "bash -i scripts/setup-services.sh",
-  "forwardPorts": [8080, 3000],
+  "forwardPorts": [8080, 3000, 5005],
   "customizations": {
     "vscode": {
       "settings": {
