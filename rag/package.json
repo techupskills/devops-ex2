@@ -1,0 +1,18 @@
+{
+  "name": "rag-codebase",
+  "version": "1.0.0",
+  "description": "RAG implementation for codebase search and analysis",
+  "main": "index.js",
+  "scripts": {
+    "build-rag": "node build-rag.js",
+    "query": "node query-rag.js",
+    "demo": "node demo.js"
+  },
+  "dependencies": {
+    "@xenova/transformers": "^2.15.0",
+    "chromadb": "^1.8.1",
+    "node-fetch": "^3.3.2",
+    "sqlite3": "^5.1.6",
+    "uuid": "^9.0.1"
+  }
+}
