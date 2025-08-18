@@ -78,7 +78,7 @@ class CodebaseRAGQuery {
     return formattedResults;
   }
 
-  displayResults(results, queryText) {
+  displayResults(results, queryText, previewLength = 200) {
     console.log(`\n🎯 Found ${results.length} relevant results for: "${queryText}"\n`);
     
     results.forEach((result, index) => {
@@ -86,8 +86,8 @@ class CodebaseRAGQuery {
       console.log(`   Type: ${result.metadata.content_type} | Lines: ${result.metadata.start_line}-${result.metadata.end_line}`);
       
       if (result.document) {
-        const preview = result.document.length > 200 
-          ? result.document.substring(0, 200) + '...'
+        const preview = result.document.length > previewLength 
+          ? result.document.substring(0, previewLength) + '...'
           : result.document;
         console.log(`   Preview: ${preview.replace(/\n/g, '\\n')}`);
       }
@@ -164,13 +164,17 @@ async function runCLI() {
 🔍 CodeRAG Query Tool
 
 Usage:
-  node query-rag.js "search query"              - Search codebase
-  node query-rag.js --category api-endpoints    - Search by category
-  node query-rag.js --analyze architecture      - Analyze codebase
-  node query-rag.js --stats                     - Show database stats
+  node query-rag.js "search query"                    - Search codebase
+  node query-rag.js --category api-endpoints          - Search by category
+  node query-rag.js --analyze architecture            - Analyze codebase
+  node query-rag.js --stats                           - Show database stats
+  node query-rag.js --preview 500 "search query"     - Set preview length (default: 200)
   
 Categories: api-endpoints, tests, config, documentation, error-handling, database, middleware, deployment
 Analyses: architecture, dependencies, security, performance, patterns
+
+Options:
+  --preview <chars>  Set preview length in characters (default: 200)
 `);
     return;
   }
@@ -178,18 +182,38 @@ Analyses: architecture, dependencies, security, performance, patterns
   const querySystem = new CodebaseRAGQuery();
   await querySystem.initialize();
   
-  if (args[0] === '--stats') {
+  // Parse arguments
+  let previewLength = 200;
+  let filteredArgs = [...args];
+  
+  // Check for --preview flag
+  const previewIndex = args.indexOf('--preview');
+  if (previewIndex !== -1 && args[previewIndex + 1]) {
+    previewLength = parseInt(args[previewIndex + 1]);
+    if (isNaN(previewLength) || previewLength < 50) {
+      console.log('❌ Preview length must be a number >= 50');
+      return;
+    }
+    // Remove --preview and its value from args
+    filteredArgs.splice(previewIndex, 2);
+  }
+  
+  if (filteredArgs[0] === '--stats') {
     await querySystem.getStats();
-  } else if (args[0] === '--category' && args[1]) {
-    const results = await querySystem.searchByCategory(args[1]);
-    querySystem.displayResults(results, `Category: ${args[1]}`);
-  } else if (args[0] === '--analyze' && args[1]) {
-    const results = await querySystem.analyze(args[1]);
-    querySystem.displayResults(results, `Analysis: ${args[1]}`);
+  } else if (filteredArgs[0] === '--category' && filteredArgs[1]) {
+    const results = await querySystem.searchByCategory(filteredArgs[1]);
+    querySystem.displayResults(results, `Category: ${filteredArgs[1]}`, previewLength);
+  } else if (filteredArgs[0] === '--analyze' && filteredArgs[1]) {
+    const results = await querySystem.analyze(filteredArgs[1]);
+    querySystem.displayResults(results, `Analysis: ${filteredArgs[1]}`, previewLength);
   } else {
-    const query = args.join(' ');
-    const results = await querySystem.query(query);
-    querySystem.displayResults(results, query);
+    const query = filteredArgs.join(' ');
+    if (query.trim()) {
+      const results = await querySystem.query(query);
+      querySystem.displayResults(results, query, previewLength);
+    } else {
+      console.log('❌ Please provide a search query');
+    }
   }
 }
 

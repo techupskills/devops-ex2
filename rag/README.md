@@ -45,22 +45,30 @@ npm run query "what testing framework is used"
 npm run query "REST API routes"
 npm run query "database operations"
 npm run query "middleware functions"
+
+# Control preview length (default: 200 characters)
+npm run query -- --preview 500 "API endpoints"
+npm run query -- --preview 100 "error handling"
 ```
 
 ### Advanced Queries
 ```bash
 # Search by category
-npm run query --category api-endpoints
-npm run query --category tests
-npm run query --category documentation
+npm run query -- --category api-endpoints
+npm run query -- --category tests
+npm run query -- --category documentation
 
 # Architectural analysis
-npm run query --analyze architecture
-npm run query --analyze dependencies
-npm run query --analyze security
+npm run query -- --analyze architecture
+npm run query -- --analyze dependencies
+npm run query -- --analyze security
 
 # Database statistics
-npm run query --stats
+npm run query -- --stats
+
+# Combine options (preview length with categories/analysis)
+npm run query -- --preview 300 --category api-endpoints
+npm run query -- --preview 150 --analyze security
 ```
 
 ## 🎯 Demo Scenarios
