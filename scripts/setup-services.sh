@@ -17,11 +17,27 @@ pip install -r requirements/requirements.txt >/dev/null
 # --- Jenkins via Docker (optional if Docker available) ---
 if docker info >/dev/null 2>&1; then
   echo "[setup] Starting Jenkins container..."
+  
+  # Build custom Jenkins image with Node.js if it doesn't exist
+  if ! docker images | grep -q "jenkins-nodejs"; then
+    echo "[setup] Building Jenkins image with Node.js (this may take a few minutes)..."
+    docker build -t jenkins-nodejs jenkins/ || {
+      echo "[setup] Failed to build custom image, using standard Jenkins..."
+      JENKINS_IMAGE="jenkins/jenkins:lts"
+    }
+  fi
+  
+  # Use custom image if available, otherwise fallback
+  JENKINS_IMAGE="${JENKINS_IMAGE:-jenkins-nodejs}"
+  
   docker rm -f jenkins >/dev/null 2>&1 || true
   docker run -d --name jenkins \
     -p 8080:8080 -p 50000:50000 \
     -v jenkins_home:/var/jenkins_home \
-    jenkins/jenkins:lts >/dev/null || true
+    -v "$(pwd)":/workspace \
+    -e JENKINS_ADMIN_ID=admin \
+    -e JENKINS_ADMIN_PASSWORD=admin \
+    "$JENKINS_IMAGE" >/dev/null || true
 
   # Wait for Jenkins (best effort)
   echo -n "[setup] Waiting for Jenkins"

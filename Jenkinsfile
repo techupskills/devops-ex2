@@ -22,31 +22,48 @@ pipeline {
         stage('Setup') {
             steps {
                 echo 'Setting up Node.js environment...'
-                dir('app') {
-                    sh '''
-                        echo "Node version: $(node --version)"
-                        echo "NPM version: $(npm --version)"
-                        npm install
-                    '''
-                }
+                sh '''
+                    echo "Node version: $(node --version)"
+                    echo "NPM version: $(npm --version)"
+                    echo "Current directory: $(pwd)"
+                    echo "Directory contents: $(ls -la)"
+                    
+                    # Check if we're in workspace or need to navigate
+                    if [ -d "/workspace/app" ]; then
+                        echo "Using workspace mount"
+                        cd /workspace/app
+                    elif [ -d "app" ]; then
+                        echo "Using current directory"
+                        cd app
+                    else
+                        echo "Looking for app directory..."
+                        find . -name "app" -type d | head -1
+                        cd "$(find . -name "app" -type d | head -1)"
+                    fi
+                    
+                    echo "Installing dependencies in: $(pwd)"
+                    npm install
+                '''
             }
         }
         
         stage('Lint') {
             steps {
                 echo 'Running linting...'
-                dir('app') {
-                    sh 'npm run lint'
-                }
+                sh '''
+                    cd /workspace/app 2>/dev/null || cd app
+                    npm run lint
+                '''
             }
         }
         
         stage('Test') {
             steps {
                 echo 'Running tests...'
-                dir('app') {
-                    sh 'npm test'
-                }
+                sh '''
+                    cd /workspace/app 2>/dev/null || cd app
+                    npm test
+                '''
             }
             post {
                 always {
@@ -59,49 +76,62 @@ pipeline {
         stage('Build') {
             steps {
                 echo 'Building application...'
-                dir('app') {
-                    sh 'npm run build'
-                }
+                sh '''
+                    cd /workspace/app 2>/dev/null || cd app
+                    npm run build
+                '''
             }
         }
         
         stage('Package') {
             steps {
                 echo 'Packaging application...'
-                script {
-                    // Create a simple deployment package
-                    sh '''
-                        mkdir -p dist
-                        cp -r app/* dist/
-                        tar -czf ${APP_NAME}-${BUILD_VERSION}.tar.gz dist/
-                        echo "Package created: ${APP_NAME}-${BUILD_VERSION}.tar.gz"
-                    '''
-                }
+                sh '''
+                    APP_DIR="/workspace/app"
+                    [ ! -d "$APP_DIR" ] && APP_DIR="app"
+                    
+                    mkdir -p dist
+                    cp -r "$APP_DIR"/* dist/
+                    tar -czf ${APP_NAME}-${BUILD_VERSION}.tar.gz dist/
+                    echo "Package created: ${APP_NAME}-${BUILD_VERSION}.tar.gz"
+                    ls -la *.tar.gz
+                '''
             }
         }
         
         stage('Integration Test') {
             steps {
                 echo 'Running integration tests...'
-                dir('app') {
-                    sh '''
-                        # Start the app in background
-                        npm start &
-                        APP_PID=$!
-                        
-                        # Wait for app to start
-                        sleep 5
-                        
-                        # Test health endpoint
-                        curl -f http://localhost:4000/health || exit 1
-                        
-                        # Test API endpoints
-                        curl -f http://localhost:4000/api/todos || exit 1
-                        
-                        # Cleanup
+                sh '''
+                    cd /workspace/app 2>/dev/null || cd app
+                    
+                    # Start the app in background on different port to avoid conflicts
+                    PORT=4001 npm start &
+                    APP_PID=$!
+                    
+                    # Wait for app to start
+                    echo "Waiting for app to start on port 4001..."
+                    sleep 5
+                    
+                    # Test health endpoint
+                    curl -f http://localhost:4001/health || {
+                        echo "Health check failed"
                         kill $APP_PID || true
-                    '''
-                }
+                        exit 1
+                    }
+                    
+                    # Test API endpoints
+                    curl -f http://localhost:4001/api/todos || {
+                        echo "API test failed"
+                        kill $APP_PID || true
+                        exit 1
+                    }
+                    
+                    echo "Integration tests passed!"
+                    
+                    # Cleanup
+                    kill $APP_PID || true
+                '''
             }
         }
         
