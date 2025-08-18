@@ -20,10 +20,14 @@ RUN node --version && npm --version
 # Switch back to jenkins user
 USER jenkins
 
-# Skip initial setup wizard and set admin user
+# Skip initial setup wizard
 ENV JAVA_OPTS -Djenkins.install.runSetupWizard=false
-ENV JENKINS_ADMIN_ID=admin
-ENV JENKINS_ADMIN_PASSWORD=admin
 
 # Install most common pipeline plugins on first startup
 RUN jenkins-plugin-cli --plugins workflow-aggregator git credentials-binding || true
+
+# Create init script to set up admin user
+USER root
+RUN mkdir -p /usr/share/jenkins/ref/init.groovy.d
+COPY --chown=jenkins:jenkins init-admin.groovy /usr/share/jenkins/ref/init.groovy.d/
+USER jenkins
