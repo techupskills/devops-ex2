@@ -134,8 +134,10 @@ status_services() {
     local services=(
         "TODO App:4000:/"
         "JIRA Mock:3000:/api/issues"
+        "JIRA Dashboard:3001:/"
         "DevOps Dashboard:5005:/"
         "Jenkins:8080:/login"
+        "Ollama:11434:/api/tags"
     )
     
     for service_info in "${services[@]}"; do
@@ -179,6 +181,17 @@ case "${1:-status}" in
             log_success "JIRA Mock already running"
         fi
         
+        # Start JIRA Dashboard
+        if ! check_service "JIRA Dashboard" 3001; then
+            if [ -d ".venv" ] && [ -d "jira-dashboard" ]; then
+                start_service "JIRA Dashboard" "source .venv/bin/activate && cd jira-dashboard && python app.py" 3001 15
+            else
+                log_warning "JIRA Dashboard dependencies not found."
+            fi
+        else
+            log_success "JIRA Dashboard already running"
+        fi
+        
         # Start DevOps Dashboard
         if ! check_service "DevOps Dashboard" 5005; then
             if [ -d ".venv" ]; then
@@ -198,6 +211,7 @@ case "${1:-status}" in
         log_info "Stopping all services..."
         stop_service "TODO App" 4000
         stop_service "JIRA Mock" 3000
+        stop_service "JIRA Dashboard" 3001
         stop_service "DevOps Dashboard" 5005
         log_success "All services stopped"
         ;;

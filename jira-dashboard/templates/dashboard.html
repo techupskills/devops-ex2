@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JIRA Dashboard - DevOps AI Demo</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .dashboard-header {
+            background: linear-gradient(135deg, #0052cc 0%, #0065ff 100%);
+            color: white;
+            padding: 2rem 0;
+        }
+        .status-badge {
+            font-size: 0.8rem;
+            padding: 0.3rem 0.6rem;
+        }
+        .priority-badge {
+            font-size: 0.75rem;
+            padding: 0.2rem 0.5rem;
+        }
+        .issue-row:hover {
+            background-color: #f8f9fa;
+            cursor: pointer;
+        }
+        .stats-card {
+            border-left: 4px solid #0052cc;
+        }
+        .refresh-btn {
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .type-icon {
+            font-size: 1.2rem;
+            margin-right: 0.5rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-header">
+        <div class="container">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <h1><i class="fas fa-tasks"></i> JIRA Dashboard</h1>
+                    <p class="mb-0">DevOps AI Demo - Issue Tracking & Management</p>
+                </div>
+                <div class="col-md-4 text-end">
+                    <button class="btn btn-light" onclick="refreshIssues()">
+                        <i class="fas fa-sync-alt" id="refresh-icon"></i> Refresh
+                    </button>
+                    <button class="btn btn-success ms-2" data-bs-toggle="modal" data-bs-target="#createIssueModal">
+                        <i class="fas fa-plus"></i> Create Issue
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container mt-4">
+        <!-- Statistics Cards -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="card stats-card">
+                    <div class="card-body">
+                        <h5 class="card-title">Total Issues</h5>
+                        <h2 class="text-primary" id="total-count">-</h2>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card stats-card">
+                    <div class="card-body">
+                        <h5 class="card-title">In Progress</h5>
+                        <h2 class="text-warning" id="progress-count">-</h2>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card stats-card">
+                    <div class="card-body">
+                        <h5 class="card-title">Completed</h5>
+                        <h2 class="text-success" id="done-count">-</h2>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card stats-card">
+                    <div class="card-body">
+                        <h5 class="card-title">High Priority</h5>
+                        <h2 class="text-danger" id="high-priority-count">-</h2>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Issues Table -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-list"></i> Issues</h5>
+            </div>
+            <div class="card-body">
+                <div id="loading" class="text-center py-4">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p class="mt-2">Loading issues...</p>
+                </div>
+                
+                <div id="error" class="alert alert-danger d-none" role="alert">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <span id="error-message"></span>
+                </div>
+
+                <div class="table-responsive" id="issues-table-container" style="display: none;">
+                    <table class="table table-hover">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>Type</th>
+                                <th>Key</th>
+                                <th>Summary</th>
+                                <th>Status</th>
+                                <th>Priority</th>
+                                <th>Created</th>
+                            </tr>
+                        </thead>
+                        <tbody id="issues-tbody">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create Issue Modal -->
+    <div class="modal fade" id="createIssueModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Create New Issue</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="create-issue-form">
+                        <div class="mb-3">
+                            <label for="issue-summary" class="form-label">Summary</label>
+                            <input type="text" class="form-control" id="issue-summary" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="issue-description" class="form-label">Description</label>
+                            <textarea class="form-control" id="issue-description" rows="3"></textarea>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <label for="issue-type" class="form-label">Type</label>
+                                <select class="form-select" id="issue-type">
+                                    <option value="Task">Task</option>
+                                    <option value="Bug">Bug</option>
+                                    <option value="Feature">Feature</option>
+                                    <option value="Story">Story</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="issue-priority" class="form-label">Priority</label>
+                                <select class="form-select" id="issue-priority">
+                                    <option value="Low">Low</option>
+                                    <option value="Medium" selected>Medium</option>
+                                    <option value="High">High</option>
+                                    <option value="Critical">Critical</option>
+                                </select>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="createIssue()">Create Issue</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let issues = [];
+
+        async function loadIssues() {
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('error').classList.add('d-none');
+            document.getElementById('issues-table-container').style.display = 'none';
+
+            try {
+                const response = await fetch('/api/issues');
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                
+                issues = await response.json();
+                displayIssues(issues);
+                updateStatistics(issues);
+                
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('issues-table-container').style.display = 'block';
+            } catch (error) {
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('error').classList.remove('d-none');
+                document.getElementById('error-message').textContent = `Failed to load issues: ${error.message}`;
+            }
+        }
+
+        function displayIssues(issues) {
+            const tbody = document.getElementById('issues-tbody');
+            tbody.innerHTML = '';
+
+            if (issues.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">No issues found</td></tr>';
+                return;
+            }
+
+            issues.forEach(issue => {
+                const row = document.createElement('tr');
+                row.className = 'issue-row';
+                row.innerHTML = `
+                    <td>
+                        <span class="type-icon">${issue.type_icon || '📋'}</span>
+                        ${issue.type}
+                    </td>
+                    <td><strong>${issue.key || issue.id}</strong></td>
+                    <td>
+                        <div class="fw-bold">${issue.summary}</div>
+                        ${issue.description ? `<small class="text-muted">${issue.description.substring(0, 100)}...</small>` : ''}
+                    </td>
+                    <td>
+                        <span class="badge bg-${issue.status_color || 'secondary'} status-badge">
+                            ${issue.status}
+                        </span>
+                    </td>
+                    <td>
+                        <span class="badge bg-${issue.priority_color || 'secondary'} priority-badge">
+                            ${issue.priority || 'Medium'}
+                        </span>
+                    </td>
+                    <td>
+                        <small>${issue.created_formatted || issue.created || 'Unknown'}</small>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function updateStatistics(issues) {
+            const total = issues.length;
+            const inProgress = issues.filter(i => i.status === 'In Progress').length;
+            const done = issues.filter(i => i.status === 'Done').length;
+            const highPriority = issues.filter(i => i.priority === 'High' || i.priority === 'Critical').length;
+
+            document.getElementById('total-count').textContent = total;
+            document.getElementById('progress-count').textContent = inProgress;
+            document.getElementById('done-count').textContent = done;
+            document.getElementById('high-priority-count').textContent = highPriority;
+        }
+
+        function refreshIssues() {
+            const icon = document.getElementById('refresh-icon');
+            icon.classList.add('refresh-btn');
+            
+            loadIssues().finally(() => {
+                setTimeout(() => {
+                    icon.classList.remove('refresh-btn');
+                }, 1000);
+            });
+        }
+
+        async function createIssue() {
+            const form = document.getElementById('create-issue-form');
+            const formData = new FormData(form);
+            
+            const issue = {
+                summary: document.getElementById('issue-summary').value,
+                description: document.getElementById('issue-description').value,
+                type: document.getElementById('issue-type').value,
+                priority: document.getElementById('issue-priority').value,
+                status: 'To Do'
+            };
+
+            try {
+                const response = await fetch('/api/create-issue', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(issue)
+                });
+
+                if (response.ok) {
+                    bootstrap.Modal.getInstance(document.getElementById('createIssueModal')).hide();
+                    form.reset();
+                    loadIssues();
+                } else {
+                    alert('Failed to create issue');
+                }
+            } catch (error) {
+                alert(`Error creating issue: ${error.message}`);
+            }
+        }
+
+        // Load issues on page load
+        document.addEventListener('DOMContentLoaded', loadIssues);
+        
+        // Auto-refresh every 30 seconds
+        setInterval(loadIssues, 30000);
+    </script>
+</body>
+</html>

@@ -6,7 +6,10 @@
   "scripts": {
     "build-rag": "node build-rag.js",
     "query": "node query-rag.js",
-    "demo": "node demo.js"
+    "demo": "node demo.js",
+    "enhanced-query": "node enhanced-query.js",
+    "setup-ollama": "bash setup-ollama.sh",
+    "enhanced-demo": "node enhanced-query.js --demo"
   },
   "dependencies": {
     "@xenova/transformers": "^2.15.0",

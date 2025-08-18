@@ -10,7 +10,7 @@
   },
   "postCreateCommand": "bash -i scripts/setup-services.sh",
   "postStartCommand": "bash -i scripts/startup-services.sh",
-  "forwardPorts": [8080, 3000, 4000, 5005],
+  "forwardPorts": [8080, 3000, 3001, 4000, 5005, 11434],
   "portsAttributes": {
     "8080": {
       "label": "Jenkins",
@@ -20,6 +20,10 @@
       "label": "JIRA API Mock",
       "onAutoForward": "silent"
     },
+    "3001": {
+      "label": "JIRA Dashboard",
+      "onAutoForward": "openPreview"
+    },
     "4000": {
       "label": "TODO Demo App",
       "onAutoForward": "openPreview"
@@ -27,6 +31,10 @@
     "5005": {
       "label": "DevOps Dashboard",
       "onAutoForward": "openPreview"
+    },
+    "11434": {
+      "label": "Ollama LLM API",
+      "onAutoForward": "silent"
     }
   },
   "customizations": {
