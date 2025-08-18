@@ -63,8 +63,53 @@ if command -v lsof >/dev/null 2>&1; then
 fi
 nohup python3 dashboard/app.py > /tmp/dashboard.log 2>&1 & disown
 
+# --- Setup Jenkins Job ---
+echo "[setup] Setting up Jenkins job..."
+if docker info >/dev/null 2>&1; then
+  # Wait a bit more for Jenkins to be fully ready
+  sleep 10
+  bash scripts/setup-jenkins-job.sh || echo "[setup] Failed to setup Jenkins job (this is normal on first run)"
+fi
+
+# --- Start TODO App on :4000 ---
+echo "[setup] Starting TODO demo app on :4000"
+if command -v lsof >/dev/null 2>&1; then
+  lsof -ti:4000 | xargs -r kill -9 || true
+fi
+if [ -d "app" ] && [ -f "app/package.json" ]; then
+  cd app
+  if [ ! -d "node_modules" ]; then
+    echo "[setup] Installing Node.js dependencies..."
+    npm install >/dev/null 2>&1
+  fi
+  nohup npm start > /tmp/todo-app.log 2>&1 & disown
+  cd ..
+  
+  # Wait for TODO app to start
+  echo -n "[setup] Waiting for TODO app"
+  for i in {1..20}; do
+    if curl -sSf http://localhost:4000/health >/dev/null 2>&1; then
+      echo " ✓"
+      break
+    fi
+    echo -n "."
+    sleep 1
+  done
+fi
+
 echo
-echo "[setup] All services started (where available)."
-echo "Jenkins : http://localhost:8080"
-echo "Jira API: http://localhost:3000/api/issues"
-echo "Dashboard: http://localhost:5005"
+echo "[setup] ✅ All services started successfully!"
+echo "┌─────────────────────────────────────────────────┐"
+echo "│                 Demo Services                   │"
+echo "├─────────────────────────────────────────────────┤"
+echo "│ Jenkins:    http://localhost:8080               │"
+echo "│ JIRA API:   http://localhost:3000/api/issues    │"  
+echo "│ Dashboard:  http://localhost:5005               │"
+echo "│ TODO App:   http://localhost:4000               │"
+echo "└─────────────────────────────────────────────────┘"
+echo
+echo "📋 Quick Start:"
+echo "1. Visit the TODO app: http://localhost:4000"
+echo "2. Check Jenkins: http://localhost:8080 (admin/admin)"
+echo "3. View JIRA tickets: http://localhost:3000/api/issues"
+echo "4. Monitor dashboard: http://localhost:5005"

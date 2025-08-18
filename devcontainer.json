@@ -9,7 +9,25 @@
     "ghcr.io/devcontainers/features/node:1": { "version": "lts" }
   },
   "postCreateCommand": "bash -i scripts/setup-services.sh",
-  "forwardPorts": [8080, 3000, 5005],
+  "forwardPorts": [8080, 3000, 4000, 5005],
+  "portsAttributes": {
+    "8080": {
+      "label": "Jenkins",
+      "onAutoForward": "openPreview"
+    },
+    "3000": {
+      "label": "JIRA API Mock",
+      "onAutoForward": "silent"
+    },
+    "4000": {
+      "label": "TODO Demo App",
+      "onAutoForward": "openPreview"
+    },
+    "5005": {
+      "label": "DevOps Dashboard",
+      "onAutoForward": "openPreview"
+    }
+  },
   "customizations": {
     "vscode": {
       "settings": {
