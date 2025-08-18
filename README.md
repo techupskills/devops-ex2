@@ -40,11 +40,34 @@ All services start automatically when the Codespace launches!
 
 See [docs/DEMO-GUIDE.md](docs/DEMO-GUIDE.md) for detailed usage instructions, architecture overview, and troubleshooting tips.
 
-## 🛠️ Manual Setup
+## 🔄 Auto-Restart Services
 
-If services don't start automatically:
+Services automatically restart when your codespace resumes! The devcontainer is configured to:
+1. **Detect existing services** and restart only what's needed
+2. **Quick dependency check** to ensure everything is ready  
+3. **Intelligent startup** with proper service health checks
+
+## 🛠️ Manual Service Management
+
+If you need manual control:
 
 ```bash
+# Check service status
+scripts/service-manager.sh status
+
+# Start all services
+scripts/service-manager.sh start
+
+# Stop all services  
+scripts/service-manager.sh stop
+
+# Restart all services
+scripts/service-manager.sh restart
+
+# View logs
+scripts/service-manager.sh logs
+
+# Initial setup (only needed once)
 bash scripts/setup-services.sh
 ```
 
