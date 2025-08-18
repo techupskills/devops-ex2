@@ -173,7 +173,7 @@ case "${1:-status}" in
         # Start JIRA Mock
         if ! check_service "JIRA Mock" 3000 "/api/issues"; then
             if [ -d ".venv" ]; then
-                start_service "JIRA Mock" "source .venv/bin/activate && python scripts/jira_mock.py" 3000 15 "/api/issues"
+                start_service "JIRA Mock" "bash -c 'source .venv/bin/activate && python scripts/jira_mock.py'" 3000 15 "/api/issues"
             else
                 log_warning "Python environment not found. Run setup first."
             fi
@@ -184,7 +184,7 @@ case "${1:-status}" in
         # Start JIRA Dashboard
         if ! check_service "JIRA Dashboard" 3001; then
             if [ -d ".venv" ] && [ -d "jira-dashboard" ]; then
-                start_service "JIRA Dashboard" "source .venv/bin/activate && cd jira-dashboard && python app.py" 3001 15
+                start_service "JIRA Dashboard" "bash -c 'source .venv/bin/activate && cd jira-dashboard && python app.py'" 3001 15
             else
                 log_warning "JIRA Dashboard dependencies not found."
             fi
@@ -195,7 +195,7 @@ case "${1:-status}" in
         # Start DevOps Dashboard
         if ! check_service "DevOps Dashboard" 5005; then
             if [ -d ".venv" ]; then
-                start_service "DevOps Dashboard" "source .venv/bin/activate && cd dashboard && python app.py" 5005 15
+                start_service "DevOps Dashboard" "bash -c 'source .venv/bin/activate && cd dashboard && python app.py'" 5005 15
             else
                 log_warning "Python environment not found. Run setup first."
             fi
