@@ -20,16 +20,10 @@ RUN node --version && npm --version
 # Switch back to jenkins user
 USER jenkins
 
-# Install suggested plugins automatically
-COPY --chown=jenkins:jenkins plugins.txt /usr/share/jenkins/ref/plugins.txt
-RUN jenkins-plugin-cli --plugin-file /usr/share/jenkins/ref/plugins.txt
-
-# Skip initial setup wizard
+# Skip initial setup wizard and set admin user
 ENV JAVA_OPTS -Djenkins.install.runSetupWizard=false
-
-# Set default admin user
 ENV JENKINS_ADMIN_ID=admin
 ENV JENKINS_ADMIN_PASSWORD=admin
 
-# Copy Jenkins configuration
-COPY --chown=jenkins:jenkins jenkins-config/ /usr/share/jenkins/ref/
+# Install most common pipeline plugins on first startup
+RUN jenkins-plugin-cli --plugins workflow-aggregator git credentials-binding || true
