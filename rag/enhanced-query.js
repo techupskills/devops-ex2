@@ -68,7 +68,7 @@ class EnhancedRAGQuery extends CodebaseRAGQuery {
           stream: false,
           options: {
             temperature: 0.1,
-            max_tokens: 50
+            num_predict: 50
           }
         })
       });
@@ -93,32 +93,22 @@ class EnhancedRAGQuery extends CodebaseRAGQuery {
       throw new Error('No RAG results to enhance');
     }
 
-    // Build context from top results
-    const topResults = ragResults.slice(0, 5); // Use top 5 results
+    // Build context from top results (keep it concise for faster processing)
+    const topResults = ragResults.slice(0, 3); // Use top 3 results only
     const context = topResults.map((result, index) => {
-      const preview = result.document.substring(0, 500); // Limit context size
-      return `## Code Context ${index + 1}: ${result.metadata.file_path}
-File Type: ${result.metadata.content_type}
-Lines: ${result.metadata.start_line}-${result.metadata.end_line}
-Relevance: ${(result.score * 100).toFixed(1)}%
-
+      const preview = result.document.substring(0, 300); // Shorter context
+      return `## Code ${index + 1}: ${result.metadata.file_path} (${(result.score * 100).toFixed(1)}% match)
 \`\`\`
-${preview}${result.document.length > 500 ? '...' : ''}
+${preview}${result.document.length > 300 ? '...' : ''}
 \`\`\``;
     }).join('\n\n');
 
-    const prompt = `You are an expert code analyst. A developer asked: "${query}"
+    const prompt = `Question: ${query}
 
-Based on the following code search results from their codebase, provide a clear, helpful answer.
-
+Code found:
 ${context}
 
-Please:
-1. Answer the developer's question directly
-2. Reference specific files when relevant  
-3. Explain how the code works
-4. Provide practical guidance
-5. Keep it concise but thorough
+Based on this code, provide a concise answer explaining how to ${query.toLowerCase()}. Reference the specific files shown.
 
 Answer:`;
 
@@ -128,7 +118,7 @@ Answer:`;
       const response = await fetch(`${this.ollamaUrl}/api/generate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        signal: AbortSignal.timeout(60000), // 60 second timeout for generation
+        signal: AbortSignal.timeout(120000), // 120 second timeout for generation
         body: JSON.stringify({
           model: this.model,
           prompt: prompt,
@@ -136,7 +126,7 @@ Answer:`;
           options: {
             temperature: 0.2,
             top_p: 0.9,
-            max_tokens: 1000,
+            num_predict: 800,
             stop: ['Human:', 'User:', 'Question:']
           }
         })
