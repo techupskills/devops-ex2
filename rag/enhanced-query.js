@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 
 const CodebaseRAGQuery = require('./query-rag');
-const fetch = require('node-fetch');
 
 class EnhancedRAGQuery extends CodebaseRAGQuery {
   constructor() {
@@ -10,119 +9,183 @@ class EnhancedRAGQuery extends CodebaseRAGQuery {
     this.model = 'qwen2.5:1.5b';
   }
 
+  // Check if Ollama is running and has the required model
   async checkOllamaStatus() {
     try {
-      const response = await fetch(`${this.ollamaUrl}/api/tags`);
-      if (!response.ok) throw new Error('Ollama not responding');
+      console.log(`🔍 Checking Ollama at ${this.ollamaUrl}...`);
       
+      // Test basic connectivity
+      const response = await fetch(`${this.ollamaUrl}/api/tags`, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
+        signal: AbortSignal.timeout(5000) // 5 second timeout
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
       const data = await response.json();
-      const hasModel = data.models?.some(m => m.name.includes(this.model));
+      console.log(`📊 Found ${data.models?.length || 0} models in Ollama`);
+
+      // Check for exact model match
+      const availableModels = data.models?.map(m => m.name) || [];
+      const hasExactModel = availableModels.includes(this.model);
       
+      console.log(`🔍 Looking for model: ${this.model}`);
+      console.log(`📋 Available models: ${availableModels.join(', ')}`);
+      console.log(`✅ Model found: ${hasExactModel ? 'YES' : 'NO'}`);
+
       return {
         running: true,
-        hasModel,
-        models: data.models?.map(m => m.name) || []
+        hasModel: hasExactModel,
+        models: availableModels,
+        error: null
       };
     } catch (error) {
+      console.log(`❌ Ollama check failed: ${error.message}`);
       return {
         running: false,
         hasModel: false,
+        models: [],
         error: error.message
       };
     }
   }
 
-  async enhanceWithLLM(query, ragResults) {
-    const status = await this.checkOllamaStatus();
-    
-    if (!status.running) {
-      throw new Error(`Ollama not running: ${status.error}`);
-    }
-    
-    if (!status.hasModel) {
-      throw new Error(`Model ${this.model} not found. Available: ${status.models.join(', ')}`);
-    }
-
-    // Build context from RAG results
-    const context = ragResults.map((result, index) => {
-      return `## Result ${index + 1}: ${result.metadata.file_path}
-**Type:** ${result.metadata.content_type}
-**Lines:** ${result.metadata.start_line}-${result.metadata.end_line}
-**Relevance:** ${(result.score * 100).toFixed(1)}%
-
-\`\`\`
-${result.document}
-\`\`\``;
-    }).join('\n\n');
-
-    const prompt = `You are a helpful coding assistant analyzing a codebase. Based on the following code search results, provide a comprehensive and helpful answer to the user's question.
-
-**User Question:** ${query}
-
-**Code Search Results:**
-${context}
-
-**Instructions:**
-- Provide a clear, helpful answer based on the code search results
-- Reference specific files and line numbers when relevant
-- Explain how the code works and how it relates to the question
-- If multiple approaches are shown, explain the differences
-- Be concise but thorough
-- Use technical language appropriate for developers
-
-**Answer:**`;
-
+  // Test a simple generation to ensure the model works
+  async testModelGeneration() {
     try {
+      console.log(`🧪 Testing model ${this.model}...`);
+      
       const response = await fetch(`${this.ollamaUrl}/api/generate`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
+        signal: AbortSignal.timeout(30000), // 30 second timeout
         body: JSON.stringify({
           model: this.model,
-          prompt: prompt,
+          prompt: 'Test: Respond with just "OK" if you can understand this.',
           stream: false,
           options: {
-            temperature: 0.1,  // Lower temperature for more focused responses
-            top_p: 0.9,
-            top_k: 40,
-            num_predict: 512   // Limit response length
+            temperature: 0.1,
+            max_tokens: 50
           }
         })
       });
 
       if (!response.ok) {
-        throw new Error(`Ollama API error: ${response.status}`);
+        const errorText = await response.text();
+        throw new Error(`HTTP ${response.status}: ${errorText}`);
       }
 
       const data = await response.json();
-      return data.response || 'No response generated';
+      console.log(`✅ Model test successful: ${data.response?.substring(0, 50)}...`);
+      return true;
     } catch (error) {
-      throw new Error(`LLM enhancement failed: ${error.message}`);
+      console.log(`❌ Model test failed: ${error.message}`);
+      return false;
     }
   }
 
+  // Enhance RAG results with LLM analysis
+  async enhanceWithLLM(query, ragResults) {
+    if (!ragResults || ragResults.length === 0) {
+      throw new Error('No RAG results to enhance');
+    }
+
+    // Build context from top results
+    const topResults = ragResults.slice(0, 5); // Use top 5 results
+    const context = topResults.map((result, index) => {
+      const preview = result.document.substring(0, 500); // Limit context size
+      return `## Code Context ${index + 1}: ${result.metadata.file_path}
+File Type: ${result.metadata.content_type}
+Lines: ${result.metadata.start_line}-${result.metadata.end_line}
+Relevance: ${(result.score * 100).toFixed(1)}%
+
+\`\`\`
+${preview}${result.document.length > 500 ? '...' : ''}
+\`\`\``;
+    }).join('\n\n');
+
+    const prompt = `You are an expert code analyst. A developer asked: "${query}"
+
+Based on the following code search results from their codebase, provide a clear, helpful answer.
+
+${context}
+
+Please:
+1. Answer the developer's question directly
+2. Reference specific files when relevant  
+3. Explain how the code works
+4. Provide practical guidance
+5. Keep it concise but thorough
+
+Answer:`;
+
+    try {
+      console.log(`🤖 Generating LLM response...`);
+      
+      const response = await fetch(`${this.ollamaUrl}/api/generate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        signal: AbortSignal.timeout(60000), // 60 second timeout for generation
+        body: JSON.stringify({
+          model: this.model,
+          prompt: prompt,
+          stream: false,
+          options: {
+            temperature: 0.2,
+            top_p: 0.9,
+            max_tokens: 1000,
+            stop: ['Human:', 'User:', 'Question:']
+          }
+        })
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Ollama API error (${response.status}): ${errorText}`);
+      }
+
+      const data = await response.json();
+      
+      if (!data.response || data.response.trim().length === 0) {
+        throw new Error('Empty response from LLM');
+      }
+
+      return data.response.trim();
+    } catch (error) {
+      throw new Error(`LLM generation failed: ${error.message}`);
+    }
+  }
+
+  // Main enhanced query function
   async enhancedQuery(queryText, options = {}) {
     const {
-      showComparison = true,
+      showRawResults = true,
       previewLength = 200,
       ...ragOptions
     } = options;
 
-    console.log(`🔍 Enhanced RAG Query: "${queryText}"`);
-    console.log('=' .repeat(60));
+    console.log(`\n🔍 Enhanced RAG Query: "${queryText}"`);
+    console.log('='.repeat(60));
 
-    // Step 1: Get RAG results
+    // Step 1: Vector similarity search
     console.log('🔎 Step 1: Searching codebase with vector similarity...');
+    console.log(`🔎 Searching for: "${queryText}"`);
+    
     const ragResults = await this.query(queryText, ragOptions);
     
-    if (showComparison) {
+    if (showRawResults && ragResults.length > 0) {
       console.log('\n📊 Raw RAG Results:');
       console.log('-'.repeat(40));
       this.displayResults(ragResults, queryText, previewLength);
+    } else if (ragResults.length === 0) {
+      console.log('❌ No relevant results found in codebase');
+      return { ragResults: [], enhancedResponse: null, error: 'No results found' };
     }
 
-    // Step 2: Check Ollama status
+    // Step 2: Check Ollama and model
     console.log('\n🦙 Step 2: Checking Ollama LLM status...');
     const status = await this.checkOllamaStatus();
     
@@ -135,13 +198,20 @@ ${context}
     if (!status.hasModel) {
       console.log(`❌ Model ${this.model} not found.`);
       console.log(`💡 Available models: ${status.models.join(', ')}`);
-      console.log('💡 Run "ollama pull qwen2.5:1.5b" to install the model.');
+      console.log(`💡 Run "ollama pull ${this.model}" to install the model.`);
       return { ragResults, enhancedResponse: null, error: 'Model not found' };
     }
 
     console.log(`✅ Ollama ready with ${this.model}`);
 
-    // Step 3: Enhance with LLM
+    // Step 3: Test model
+    const modelWorks = await this.testModelGeneration();
+    if (!modelWorks) {
+      console.log('❌ Model test failed. Using RAG results only.');
+      return { ragResults, enhancedResponse: null, error: 'Model not responding' };
+    }
+
+    // Step 4: Enhance with LLM
     console.log('\n🤖 Step 3: Enhancing results with LLM...');
     
     try {
@@ -155,10 +225,12 @@ ${context}
       return { ragResults, enhancedResponse, error: null };
     } catch (error) {
       console.log(`❌ LLM enhancement failed: ${error.message}`);
+      console.log('📊 Falling back to RAG results only.');
       return { ragResults, enhancedResponse: null, error: error.message };
     }
   }
 
+  // Display comparison between traditional and enhanced RAG
   displayComparison(query, ragResults, enhancedResponse) {
     console.log('\n📈 RAG vs Enhanced Comparison:');
     console.log('='.repeat(80));
@@ -191,81 +263,78 @@ ${context}
 async function runEnhancedCLI() {
   const args = process.argv.slice(2);
   
-  if (args.length === 0) {
+  if (args.length === 0 || args[0] === '--help') {
     console.log(`
 🤖 Enhanced RAG Query Tool (with LLM)
 
 Usage:
-  node enhanced-query.js "search query"                   - Enhanced search with LLM
-  node enhanced-query.js --raw "search query"             - Show RAG only (no LLM)
-  node enhanced-query.js --preview 500 "search query"     - Custom preview length
-  node enhanced-query.js --status                         - Check Ollama status
-  node enhanced-query.js --demo                           - Run comparison demo
+  npm run enhanced-query "search query"           - Enhanced search with LLM
+  npm run enhanced-query --status                 - Check Ollama status  
+  npm run enhanced-query --demo                   - Run comparison demo
+  npm run enhanced-query --test                   - Test model generation
 
 Examples:
-  node enhanced-query.js "how to create API endpoints"
-  node enhanced-query.js "error handling validation"
-  node enhanced-query.js "testing framework setup"
+  npm run enhanced-query "how to create API endpoints"
+  npm run enhanced-query "error handling validation"
+  npm run enhanced-query "testing framework setup"
   
 Prerequisites:
   1. RAG database built: npm run build-rag
-  2. Ollama installed: bash setup-ollama.sh
+  2. Ollama running with qwen2.5:1.5b model
 `);
     return;
   }
   
   const enhancedQuery = new EnhancedRAGQuery();
-  await enhancedQuery.initialize();
   
-  // Parse arguments
-  let query = '';
-  let showComparison = true;
-  let previewLength = 150;
-  let rawOnly = false;
-  
-  for (let i = 0; i < args.length; i++) {
-    if (args[i] === '--status') {
-      const status = await enhancedQuery.checkOllamaStatus();
-      console.log('\n🦙 Ollama Status:');
-      console.log(`Running: ${status.running ? '✅' : '❌'}`);
-      console.log(`Model Ready: ${status.hasModel ? '✅' : '❌'}`);
-      if (status.models.length > 0) {
-        console.log(`Available Models: ${status.models.join(', ')}`);
-      }
-      if (status.error) {
-        console.log(`Error: ${status.error}`);
-      }
-      return;
-    } else if (args[i] === '--raw') {
-      rawOnly = true;
-    } else if (args[i] === '--preview' && args[i + 1]) {
-      previewLength = parseInt(args[i + 1]);
-      i++; // skip next arg
-    } else if (args[i] === '--demo') {
-      await runDemo(enhancedQuery);
-      return;
-    } else if (!args[i].startsWith('--')) {
-      query += args[i] + ' ';
-    }
+  try {
+    console.log('🔍 Initializing RAG query system...');
+    await enhancedQuery.initialize();
+    console.log('✅ Query system ready');
+  } catch (error) {
+    console.error('❌ Failed to initialize RAG system:', error.message);
+    return;
   }
   
-  query = query.trim();
+  // Handle special commands
+  if (args[0] === '--status') {
+    const status = await enhancedQuery.checkOllamaStatus();
+    console.log('\n🦙 Ollama Status Report:');
+    console.log(`Running: ${status.running ? '✅' : '❌'}`);
+    console.log(`Model Available: ${status.hasModel ? '✅' : '❌'}`);
+    if (status.models.length > 0) {
+      console.log(`Available Models: ${status.models.join(', ')}`);
+    }
+    if (status.error) {
+      console.log(`Error: ${status.error}`);
+    }
+    return;
+  }
+  
+  if (args[0] === '--test') {
+    await enhancedQuery.checkOllamaStatus();
+    await enhancedQuery.testModelGeneration();
+    return;
+  }
+
+  if (args[0] === '--demo') {
+    await runDemo(enhancedQuery);
+    return;
+  }
+  
+  // Parse query
+  const query = args.join(' ').trim();
   
   if (!query) {
     console.log('❌ Please provide a search query');
     return;
   }
   
-  if (rawOnly) {
-    const results = await enhancedQuery.query(query);
-    enhancedQuery.displayResults(results, query, previewLength);
-  } else {
-    const { ragResults, enhancedResponse } = await enhancedQuery.enhancedQuery(query, { 
-      showComparison: true,
-      previewLength 
-    });
-    
+  try {
+    const { ragResults, enhancedResponse } = await enhancedQuery.enhancedQuery(query);
     enhancedQuery.displayComparison(query, ragResults, enhancedResponse);
+  } catch (error) {
+    console.error('❌ Query failed:', error.message);
   }
 }
 
@@ -276,7 +345,7 @@ async function runDemo(enhancedQuery) {
 
   const demoQueries = [
     "how to create new API endpoints",
-    "error handling and validation",
+    "error handling and validation", 
     "what testing framework is used"
   ];
 
@@ -285,10 +354,11 @@ async function runDemo(enhancedQuery) {
     console.log(`🔍 Demo Query: "${query}"`);
     console.log(`${'='.repeat(80)}`);
     
-    await enhancedQuery.enhancedQuery(query, { showComparison: false, previewLength: 100 });
-    
-    // Pause between queries
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    try {
+      await enhancedQuery.enhancedQuery(query, { showRawResults: false });
+    } catch (error) {
+      console.log(`❌ Demo query failed: ${error.message}`);
+    }
   }
   
   console.log(`
@@ -296,7 +366,7 @@ async function runDemo(enhancedQuery) {
 
 Key Takeaways:
 1. Traditional RAG: Great for finding relevant code locations
-2. Enhanced RAG: Provides explanations and synthesizes information
+2. Enhanced RAG: Provides explanations and synthesizes information  
 3. Best of both: Precise search + intelligent interpretation
 
 The combination makes codebase exploration much more accessible!
