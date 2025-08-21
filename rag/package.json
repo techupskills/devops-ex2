@@ -5,11 +5,13 @@
   "main": "index.js",
   "scripts": {
     "build-rag": "node build-rag.js",
+    "build-rag-app": "node build-rag.js app",
     "query": "node query-rag.js",
     "demo": "node demo.js",
+    "app-demo": "node app-demo.js",
     "enhanced-query": "node enhanced-query.js",
     "setup-ollama": "bash setup-ollama.sh",
-    "enhanced-demo": "node enhanced-query.js --demo"
+    "enhanced-demo": "node enhanced-demo.js"
   },
   "dependencies": {
     "@xenova/transformers": "^2.15.0",

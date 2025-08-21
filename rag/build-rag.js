@@ -6,10 +6,12 @@ const SimpleVectorStore = require('./simple-vector-store');
 const { pipeline } = require('@xenova/transformers');
 
 class CodebaseRAGBuilder {
-  constructor() {
+  constructor(codebaseSubdirectory = null) {
     this.vectorStore = null;
     this.embedder = null;
-    this.codebaseRoot = path.resolve(__dirname, '..');
+    this.codebaseRoot = codebaseSubdirectory 
+      ? path.resolve(__dirname, '..', codebaseSubdirectory)
+      : path.resolve(__dirname, '..');
     this.documents = [];
     this.metadata = [];
     this.ids = [];
@@ -244,9 +246,35 @@ class CodebaseRAGBuilder {
   }
 }
 
-// Run if called directly
+// CLI interface
 if (require.main === module) {
-  const builder = new CodebaseRAGBuilder();
+  const args = process.argv.slice(2);
+  
+  if (args.includes('--help')) {
+    console.log(`
+🚀 RAG Database Builder
+
+Usage:
+  npm run build-rag                    - Build RAG for entire codebase
+  npm run build-rag app                - Build RAG for just app/ directory
+  npm run build-rag --help             - Show this help
+
+Examples:
+  node build-rag.js app                - Focus on TODO app code only
+  node build-rag.js dashboard          - Focus on dashboard code only
+`);
+    process.exit(0);
+  }
+  
+  const subdirectory = args[0];
+  const builder = new CodebaseRAGBuilder(subdirectory);
+  
+  if (subdirectory) {
+    console.log(`🎯 Building RAG database for: ${subdirectory}/`);
+  } else {
+    console.log('🌐 Building RAG database for entire codebase');
+  }
+  
   builder.build().catch(console.error);
 }
 
