@@ -72,6 +72,13 @@ for i in {1..30}; do
   sleep 1
 done
 
+# --- Start JIRA Dashboard on :3001 ---
+echo "[setup] Starting JIRA Dashboard on :3001"
+if command -v lsof >/dev/null 2>&1; then
+  lsof -ti:3001 | xargs -r kill -9 || true
+fi
+nohup bash -c 'source .venv/bin/activate && python3 jira-dashboard/app.py' > /tmp/jira-dashboard.log 2>&1 & disown
+
 # --- Start Dashboard on :5005 ---
 echo "[setup] Starting Flask dashboard on :5005"
 if command -v lsof >/dev/null 2>&1; then
@@ -118,14 +125,16 @@ echo "[setup] ✅ All services started successfully!"
 echo "┌─────────────────────────────────────────────────┐"
 echo "│                 Demo Services                   │"
 echo "├─────────────────────────────────────────────────┤"
-echo "│ Jenkins:    http://localhost:8080               │"
-echo "│ JIRA API:   http://localhost:3000/api/issues    │"  
-echo "│ Dashboard:  http://localhost:5005               │"
-echo "│ TODO App:   http://localhost:4000               │"
+echo "│ Jenkins:        http://localhost:8080           │"
+echo "│ JIRA API:       http://localhost:3000/api/issues│"  
+echo "│ JIRA Dashboard: http://localhost:3001           │"
+echo "│ Dashboard:      http://localhost:5005           │"
+echo "│ TODO App:       http://localhost:4000           │"
 echo "└─────────────────────────────────────────────────┘"
 echo
 echo "📋 Quick Start:"
 echo "1. Visit the TODO app: http://localhost:4000"
 echo "2. Check Jenkins: http://localhost:8080 (admin/admin)"
 echo "3. View JIRA tickets: http://localhost:3000/api/issues"
-echo "4. Monitor dashboard: http://localhost:5005"
+echo "4. JIRA Dashboard: http://localhost:3001"
+echo "5. Monitor dashboard: http://localhost:5005"
