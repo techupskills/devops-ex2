@@ -62,6 +62,15 @@ def get_issues():
                         issue['created_formatted'] = created_date.strftime('%Y-%m-%d %H:%M')
                     except:
                         issue['created_formatted'] = issue['created']
+                
+                # Format updated date if available
+                if 'updated' in issue:
+                    try:
+                        # Parse and format date
+                        updated_date = datetime.fromisoformat(issue['updated'].replace('Z', '+00:00'))
+                        issue['updated_formatted'] = updated_date.strftime('%Y-%m-%d %H:%M')
+                    except:
+                        issue['updated_formatted'] = issue['updated']
             
             return jsonify(issues)
         else:

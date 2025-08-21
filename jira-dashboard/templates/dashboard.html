@@ -183,6 +183,76 @@
         </div>
     </div>
 
+    <!-- Issue Details Modal -->
+    <div class="modal fade" id="issueDetailsModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="issue-details-title">Issue Details</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-8">
+                            <h6 class="text-muted">Summary</h6>
+                            <h4 id="details-summary">-</h4>
+                            
+                            <h6 class="text-muted mt-3">Description</h6>
+                            <p id="details-description">-</p>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card">
+                                <div class="card-body">
+                                    <h6 class="card-title">Issue Details</h6>
+                                    
+                                    <div class="mb-2">
+                                        <strong>Type:</strong>
+                                        <span id="details-type-icon"></span>
+                                        <span id="details-type">-</span>
+                                    </div>
+                                    
+                                    <div class="mb-2">
+                                        <strong>Status:</strong>
+                                        <span id="details-status-badge">-</span>
+                                    </div>
+                                    
+                                    <div class="mb-2">
+                                        <strong>Priority:</strong>
+                                        <span id="details-priority-badge">-</span>
+                                    </div>
+                                    
+                                    <div class="mb-2">
+                                        <strong>Reporter:</strong><br>
+                                        <small id="details-reporter">-</small>
+                                    </div>
+                                    
+                                    <div class="mb-2">
+                                        <strong>Assignee:</strong><br>
+                                        <small id="details-assignee">-</small>
+                                    </div>
+                                    
+                                    <div class="mb-2">
+                                        <strong>Created:</strong><br>
+                                        <small id="details-created">-</small>
+                                    </div>
+                                    
+                                    <div class="mb-2">
+                                        <strong>Updated:</strong><br>
+                                        <small id="details-updated">-</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary" onclick="editIssue()">Edit Issue</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         let issues = [];
@@ -221,6 +291,8 @@
             issues.forEach(issue => {
                 const row = document.createElement('tr');
                 row.className = 'issue-row';
+                row.style.cursor = 'pointer';
+                row.onclick = () => showIssueDetails(issue);
                 row.innerHTML = `
                     <td>
                         <span class="type-icon">${issue.type_icon || '📋'}</span>
@@ -301,6 +373,48 @@
             } catch (error) {
                 alert(`Error creating issue: ${error.message}`);
             }
+        }
+
+        let currentIssue = null;
+
+        function showIssueDetails(issue) {
+            currentIssue = issue;
+            
+            // Update modal title
+            document.getElementById('issue-details-title').textContent = issue.key || `Issue #${issue.id}`;
+            
+            // Update modal content
+            document.getElementById('details-summary').textContent = issue.summary;
+            document.getElementById('details-description').textContent = issue.description || 'No description provided';
+            document.getElementById('details-type-icon').textContent = issue.type_icon || '📋';
+            document.getElementById('details-type').textContent = issue.type;
+            
+            // Update status badge
+            const statusBadge = document.getElementById('details-status-badge');
+            statusBadge.className = `badge bg-${issue.status_color || 'secondary'} status-badge`;
+            statusBadge.textContent = issue.status;
+            
+            // Update priority badge
+            const priorityBadge = document.getElementById('details-priority-badge');
+            priorityBadge.className = `badge bg-${issue.priority_color || 'secondary'} priority-badge`;
+            priorityBadge.textContent = issue.priority || 'Medium';
+            
+            // Update other details
+            document.getElementById('details-reporter').textContent = issue.reporter || 'Unknown';
+            document.getElementById('details-assignee').textContent = issue.assignee || 'Unassigned';
+            document.getElementById('details-created').textContent = issue.created_formatted || issue.created || 'Unknown';
+            document.getElementById('details-updated').textContent = issue.updated_formatted || issue.updated || 'Unknown';
+            
+            // Show the modal
+            const modal = new bootstrap.Modal(document.getElementById('issueDetailsModal'));
+            modal.show();
+        }
+
+        function editIssue() {
+            if (!currentIssue) return;
+            
+            // For now, just show an alert. In a real app, this would open an edit modal
+            alert(`Edit functionality for ${currentIssue.key || currentIssue.id} would be implemented here.\n\nThis could open an edit form with the current values pre-filled.`);
         }
 
         // Load issues on page load
