@@ -103,12 +103,18 @@ ${preview}${result.document.length > 300 ? '...' : ''}
 \`\`\``;
     }).join('\n\n');
 
-    const prompt = `Question: ${query}
+    const prompt = `You are a senior software engineer analyzing a codebase. A developer is asking: "${query}"
 
-Code found:
+Here is the relevant code found in the codebase:
 ${context}
 
-Based on this code, provide a concise answer explaining how to ${query.toLowerCase()}. Reference the specific files shown.
+Analyze the code and provide a practical explanation that includes:
+1. How this code addresses the question
+2. What patterns or techniques are being used
+3. Any implementation details or gotchas to be aware of
+4. Reference specific files and line numbers where relevant
+
+Keep your response focused and actionable for a developer working on this codebase.
 
 Answer:`;
 
@@ -147,6 +153,28 @@ Answer:`;
     } catch (error) {
       throw new Error(`LLM generation failed: ${error.message}`);
     }
+  }
+
+  // Override with more comprehensive categories for enhanced RAG
+  async searchByCategory(category) {
+    const queries = {
+      'api-endpoints': 'REST API routes endpoints GET POST PUT DELETE express router middleware',
+      'authentication': 'JWT token authentication middleware passport login session security',
+      'database': 'database connection pool ORM queries transactions migration schema',
+      'error-handling': 'error handling try catch validation middleware logging custom errors',
+      'testing': 'unit integration tests jest mocha describe expect mock fixtures',
+      'security': 'authentication authorization validation sanitization CORS helmet rate limiting',
+      'caching': 'cache redis memcached memory store performance optimization',
+      'monitoring': 'logging metrics monitoring health checks alerts prometheus winston',
+      'deployment': 'docker kubernetes CI/CD pipeline deploy build production environment',
+      'async-patterns': 'promise async await queue workers background jobs event emitters'
+    };
+
+    if (!(category in queries)) {
+      throw new Error(`Unknown category. Available: ${Object.keys(queries).join(', ')}`);
+    }
+
+    return await this.query(queries[category]);
   }
 
   // Main enhanced query function
@@ -264,9 +292,10 @@ Usage:
   npm run enhanced-query --test                   - Test model generation
 
 Examples:
-  npm run enhanced-query "how to create API endpoints"
-  npm run enhanced-query "error handling validation"
-  npm run enhanced-query "testing framework setup"
+  npm run enhanced-query "how to implement JWT authentication"
+  npm run enhanced-query "database connection pooling strategies"  
+  npm run enhanced-query "async job processing with retries"
+  npm run enhanced-query "input validation middleware patterns"
   
 Prerequisites:
   1. RAG database built: npm run build-rag
@@ -334,9 +363,11 @@ async function runDemo(enhancedQuery) {
 =======================================================`);
 
   const demoQueries = [
-    "how to create new API endpoints",
-    "error handling and validation", 
-    "what testing framework is used"
+    "how to implement JWT authentication middleware",
+    "database connection pooling and error recovery patterns",
+    "async job queue processing with retry mechanisms",
+    "input validation with custom error messages",
+    "implementing rate limiting for API endpoints"
   ];
 
   for (const query of demoQueries) {
@@ -354,12 +385,21 @@ async function runDemo(enhancedQuery) {
   console.log(`
 🎯 Demo Complete! 
 
-Key Takeaways:
-1. Traditional RAG: Great for finding relevant code locations
-2. Enhanced RAG: Provides explanations and synthesizes information  
-3. Best of both: Precise search + intelligent interpretation
+🔍 What RAG Found vs 🤖 What LLM Added:
 
-The combination makes codebase exploration much more accessible!
+RAG RETRIEVAL (Vector Search):
+• Finds code chunks semantically similar to your query
+• Returns raw code with similarity scores
+• Good for: "Where is the authentication middleware?"
+
+LLM ENHANCEMENT (Understanding):
+• Explains HOW the code works and WHY it's structured that way  
+• Connects multiple code pieces into a coherent explanation
+• Identifies patterns, potential issues, and implementation details
+• Good for: "How does the authentication flow work in practice?"
+
+🚀 ENHANCED RAG = RAG's precision + LLM's comprehension
+   Perfect for: Understanding unfamiliar codebases quickly!
 `);
 }
 
