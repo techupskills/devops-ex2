@@ -8,8 +8,8 @@
     "ghcr.io/devcontainers/features/python:1": {},
     "ghcr.io/devcontainers/features/node:1": { "version": "lts" }
   },
-  "postCreateCommand": "bash -i scripts/setup-services.sh",
-  "postStartCommand": "bash -i scripts/startup-services.sh",
+  "postCreateCommand": "bash scripts/setup-services.sh",
+  "postStartCommand": "echo 'Codespace ready! Run: scripts/startup-services.sh'",
   "forwardPorts": [8080, 3000, 3001, 4000, 5005, 11434],
   "portsAttributes": {
     "8080": {
