@@ -6,7 +6,7 @@ class EnhancedRAGQuery extends CodebaseRAGQuery {
   constructor() {
     super();
     this.ollamaUrl = 'http://localhost:11434';
-    this.model = 'qwen2.5:1.5b';
+    this.model = 'llama3.2:latest';
   }
 
   // Check if Ollama is running and has the required model
@@ -93,28 +93,41 @@ class EnhancedRAGQuery extends CodebaseRAGQuery {
       throw new Error('No RAG results to enhance');
     }
 
-    // Build context from top results (keep it concise for faster processing)
+    // Build context from top results with more detail for better LLM integration
     const topResults = ragResults.slice(0, 3); // Use top 3 results only
     const context = topResults.map((result, index) => {
-      const preview = result.document.substring(0, 300); // Shorter context
-      return `## Code ${index + 1}: ${result.metadata.file_path} (${(result.score * 100).toFixed(1)}% match)
-\`\`\`
-${preview}${result.document.length > 300 ? '...' : ''}
+      const preview = result.document.substring(0, 500); // More context for better analysis
+      return `## Code Result ${index + 1}: ${result.metadata.file_path} (${(result.score * 100).toFixed(1)}% relevance match)
+File Type: ${result.metadata.file_type} | Content Type: ${result.metadata.content_type}
+Lines: ${result.metadata.start_line}-${result.metadata.end_line}
+
+\`\`\`${result.metadata.file_type}
+${preview}${result.document.length > 500 ? '\n... [truncated for brevity]' : ''}
 \`\`\``;
     }).join('\n\n');
 
     const prompt = `You are a senior software engineer analyzing a codebase. A developer is asking: "${query}"
 
-Here is the relevant code found in the codebase:
+The RAG system found ${ragResults.length} relevant code chunks. Here are the top 3 most relevant results:
+
 ${context}
 
-Analyze the code and provide a practical explanation that includes:
-1. How this code addresses the question
-2. What patterns or techniques are being used
-3. Any implementation details or gotchas to be aware of
-4. Reference specific files and line numbers where relevant
+IMPORTANT: Your response must directly reference and analyze the specific code shown above. 
 
-Keep your response focused and actionable for a developer working on this codebase.
+Provide a comprehensive analysis that:
+
+1. **Directly quotes and references the actual code** from the files shown above
+2. **Explains how each code result addresses the developer's question**
+3. **Identifies patterns, techniques, and implementation details** found in the specific code
+4. **Points out potential issues or improvements** based on what you see in the actual code
+5. **Provides actionable next steps** using the file paths and line numbers from the results
+
+Format your response with clear references like:
+- "In Code Result 1 (${topResults[0]?.metadata?.file_path}), lines ${topResults[0]?.metadata?.start_line}-${topResults[0]?.metadata?.end_line}..."
+- "The code shows: \`specific code snippet\`"
+- "Looking at the ${topResults[1]?.metadata?.file_type} file..."
+
+Your analysis should be grounded in the actual codebase content, not generic advice.
 
 Answer:`;
 
