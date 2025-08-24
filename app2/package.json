@@ -1,0 +1,45 @@
+{
+  "name": "advanced-todo-api",
+  "version": "1.0.0",
+  "description": "Sophisticated todo API with JWT authentication, database pooling, and async processing",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "lint": "eslint src/",
+    "migrate": "node src/utils/migrate.js",
+    "seed": "node src/utils/seed.js"
+  },
+  "keywords": ["express", "jwt", "authentication", "todo", "api", "rag"],
+  "author": "DevOps Demo",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2",
+    "express-rate-limit": "^6.10.0",
+    "helmet": "^7.0.0",
+    "cors": "^2.8.5",
+    "jsonwebtoken": "^9.0.2",
+    "bcryptjs": "^2.4.3",
+    "joi": "^17.9.2",
+    "mysql2": "^3.6.0",
+    "redis": "^4.6.8",
+    "bull": "^4.11.3",
+    "winston": "^3.10.0",
+    "dotenv": "^16.3.1",
+    "compression": "^1.7.4",
+    "express-validator": "^7.0.1",
+    "multer": "^1.4.5-lts.1",
+    "nodemailer": "^6.9.4"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1",
+    "jest": "^29.6.2",
+    "supertest": "^6.3.3",
+    "eslint": "^8.46.0"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}
